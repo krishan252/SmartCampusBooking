@@ -425,15 +425,107 @@ function App() {
                       <p className="resource-location">
                         ⌖ {booking.resource?.location || "Campus"}
                       </p>
-                      <div className="booking-record-details">
-                        <p><strong>Date:</strong> {bookingDate}</p>
-                        <p>
-                          <strong>Time:</strong> {booking.startTime}–{booking.endTime}
-                        </p>
-                        <p><strong>Status:</strong> {booking.status || "Pending"}</p>
-                      </div>
-                    </div>
-                  </article>
+                      
+<div className="booking-record-details">
+  <p><strong>Date:</strong> {bookingDate}</p>
+  <p>
+    <strong>Time:</strong> {booking.startTime}–{booking.endTime}
+  </p>
+  <p><strong>Status:</strong> {booking.status || "Pending"}</p>
+
+  {(!booking.status || booking.status === "Pending") && (
+    <div className="booking-actions">
+      <button
+        type="button"
+        className="edit-booking-button"
+        onClick={() => {
+          const newDate = window.prompt(
+            "Enter new booking date (YYYY-MM-DD):",
+            bookingDate
+          );
+          if (newDate === null) return;
+
+          const newStart = window.prompt(
+            "Enter new start time (HH:MM):",
+            booking.startTime
+          );
+          if (newStart === null) return;
+
+          const newEnd = window.prompt(
+            "Enter new end time (HH:MM):",
+            booking.endTime
+          );
+          if (newEnd === null) return;
+
+          if (
+            !/^\d{4}-\d{2}-\d{2}$/.test(newDate) ||
+            !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(newStart) ||
+            !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(newEnd) ||
+            newStart >= newEnd
+          ) {
+            window.alert(
+              "Invalid date or time. Use YYYY-MM-DD and HH:MM format, with end time after start time."
+            );
+            return;
+          }
+
+          fetch(`http://localhost:5000/api/bookings/${booking._id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              bookingDate: newDate,
+              startTime: newStart,
+              endTime: newEnd,
+            }),
+          })
+            .then(async (response) => {
+              const data = await response.json();
+              if (!response.ok) {
+                throw new Error(data.message || "Could not update booking.");
+              }
+              window.alert(data.message || "Booking updated successfully.");
+              window.location.reload();
+            })
+            .catch((error) => window.alert(error.message));
+        }}
+      >
+        Edit booking
+      </button>
+
+      <button
+        type="button"
+        className="cancel-booking-button"
+        onClick={async () => {
+          if (!window.confirm("Are you sure you want to cancel this booking?")) {
+            return;
+          }
+
+          try {
+            const response = await fetch(
+              `http://localhost:5000/api/bookings/${booking._id}`,
+              { method: "DELETE" }
+            );
+            const data = await response.json();
+
+            if (!response.ok) {
+              throw new Error(data.message || "Could not cancel booking.");
+            }
+
+            window.alert(data.message || "Booking cancelled successfully.");
+            window.location.reload();
+          } catch (error) {
+            window.alert(error.message);
+          }
+        }}
+      >
+        Cancel booking
+      </button>
+    </div>
+  )}
+</div>
+</div>
+</article>
+
                 );
               })}
             </div>
