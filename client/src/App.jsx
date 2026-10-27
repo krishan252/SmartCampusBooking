@@ -12,6 +12,9 @@ const resourceIcons = {
 
 function App() {
   const [resources, setResources] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
+  const [bookingsError, setBookingsError] = useState("");
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [selected, setSelected] = useState(null);
@@ -51,6 +54,34 @@ function App() {
     }
 
     loadResources();
+  }, []);
+
+  // Load submitted bookings from the backend
+  async function loadBookings() {
+    try {
+      setBookingsLoading(true);
+      setBookingsError("");
+
+      const response = await fetch(`${API_URL}/bookings`);
+
+      if (!response.ok) {
+        throw new Error("Could not load bookings.");
+      }
+
+      const data = await response.json();
+      setBookings(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Error loading bookings:", err);
+      setBookingsError(
+        "Unable to load bookings. Please check the booking API."
+      );
+    } finally {
+      setBookingsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadBookings();
   }, []);
 
   // Filter resources by search text and category
@@ -134,6 +165,7 @@ function App() {
       setMessage(
         `Booking request submitted successfully! Status: ${result.booking.status}.`
       );
+      await loadBookings();
     } catch (err) {
       console.error("Booking submission error:", err);
       setMessage(
@@ -333,6 +365,77 @@ function App() {
                   No resources match your search. Try another keyword or category.
                 </p>
               )}
+            </div>
+          )}
+        </section>
+
+        <section className="resources-section" id="my-bookings">
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow">YOUR RESERVATIONS</span>
+              <h2>My bookings</h2>
+              <p>View booking requests submitted through CampusSpace.</p>
+            </div>
+            <button
+              className="filter"
+              type="button"
+              onClick={loadBookings}
+              disabled={bookingsLoading}
+            >
+              {bookingsLoading ? "Refreshing..." : "Refresh bookings"}
+            </button>
+          </div>
+
+          {bookingsLoading && bookings.length === 0 && (
+            <p className="empty-state">Loading bookings...</p>
+          )}
+
+          {bookingsError && (
+            <p className="empty-state" role="alert">{bookingsError}</p>
+          )}
+
+          {!bookingsLoading && !bookingsError && bookings.length === 0 && (
+            <p className="empty-state">
+              No bookings found yet. Submit a booking request to see it here.
+            </p>
+          )}
+
+          {bookings.length > 0 && (
+            <div className="resource-grid">
+              {bookings.map((booking) => {
+                const resourceName =
+                  booking.resource?.name || "Campus resource";
+                const bookingDate = booking.bookingDate
+                  ? String(booking.bookingDate).slice(0, 10)
+                  : "Date unavailable";
+
+                return (
+                  <article className="resource-card booking-card" key={booking._id}>
+                    <div className="resource-art art-1">
+                      <span className="resource-emoji">🗓️</span>
+                      <span className="available-label">
+                        <i></i> {booking.status || "Pending"}
+                      </span>
+                    </div>
+                    <div className="resource-details">
+                      <span className="resource-type">
+                        {booking.resource?.type || "Resource booking"}
+                      </span>
+                      <h3>{resourceName}</h3>
+                      <p className="resource-location">
+                        ⌖ {booking.resource?.location || "Campus"}
+                      </p>
+                      <div className="booking-record-details">
+                        <p><strong>Date:</strong> {bookingDate}</p>
+                        <p>
+                          <strong>Time:</strong> {booking.startTime}–{booking.endTime}
+                        </p>
+                        <p><strong>Status:</strong> {booking.status || "Pending"}</p>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           )}
         </section>
